@@ -1,4 +1,4 @@
-# @quantropic-labs/security
+# @quantropic/security
 
 Security library with SRP authentication and cryptography utilities.
 
@@ -11,5 +11,5 @@ Security library with SRP authentication and cryptography utilities.
 ## Installation
 
 ```bash
-npm install @quantropic-labs/security
+npm install @quantropic/security
 ```

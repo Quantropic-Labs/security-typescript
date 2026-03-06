@@ -1,6 +1,6 @@
 {
-  "name": "@quantropic-labs/security",
-  "version": "0.1.0-beta.2",
+  "name": "@quantropic/security",
+  "version": "0.1.0-beta.6",
   "description": "Security library with SRP authentication and cryptography",
   "type": "module",
   "main": "./dist/index.cjs",
