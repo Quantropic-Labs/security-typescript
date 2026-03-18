@@ -1,6 +1,6 @@
 {
-  "name": "quantric-security",
-  "version": "0.0.1",
+  "name": "@quantropic/security",
+  "version": "0.1.0-beta.6",
   "description": "Security library with SRP authentication and cryptography",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -12,6 +12,9 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
+  },
+    "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist",
@@ -34,7 +37,7 @@
     "authentication",
     "typescript"
   ],
-  "author": "Your Name",
+  "author": "IgorBoytsov",
   "license": "MIT",
   "repository": {
     "type": "git",
