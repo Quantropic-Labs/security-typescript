@@ -10,9 +10,9 @@ export class SrpService {
     return SecurityUtils.toBase64(SecurityUtils.bigIntToFixedBytes(v, SecurityUtils.MODULUS_SIZE));
   }
 
-  async generateSrpProof(password: string, saltBase64: string, B_base64: string): Promise<{ A: string; M1: string; S: string }> {
+  async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string): Promise<{ A: string; M1: string; S: string }> {
     const salt = SecurityUtils.fromBase64(saltBase64);
-    const { authHash } = await this.keyDerivation.deriveKeysFromPassword(password, salt);
+    const { authHash } = await this.keyDerivation.deriveKeysFromPassword(login, password, salt);
     const x = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(authHash));
 
     const aBytes = crypto.getRandomValues(new Uint8Array(32));
