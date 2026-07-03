@@ -34,7 +34,8 @@ export class SrpServerService {
   async getSrpChallenge(login: string, verifierBytes: Uint8Array, ctx: SrpContext): Promise<SrpSessionState> {
     const v = SecurityUtils.bytesToBigInt(verifierBytes);
 
-    const bBytes = crypto.getRandomValues(new Uint8Array(32));
+    const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
+    const bBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
     const b = SecurityUtils.bytesToBigInt(bBytes);
 
     const gB = SecurityUtils.expMod(ctx.g, b, ctx.N);

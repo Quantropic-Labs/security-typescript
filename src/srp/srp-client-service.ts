@@ -30,13 +30,14 @@ export class SrpClientService {
    * @param ctx - SRP context.
    * @returns Object with A, M1, S as Base64 strings.
    */
-  async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext): Promise<{ A: string; M1: string; S: string }> {
+  async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
     const salt = SecurityUtils.fromBase64(saltBase64);
 
     const authHash = await this.keyDerivation.deriveAuthHashForSrp(login, password, salt, ctx.hashAlgorithmName);
     const x = SecurityUtils.bytesToBigInt(authHash);
 
-    const aBytes = crypto.getRandomValues(new Uint8Array(32));
+    const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
+    const aBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
     const a = SecurityUtils.bytesToBigInt(aBytes);
 
     const A = SecurityUtils.expMod(ctx.g, a, ctx.N);
@@ -66,7 +67,7 @@ export class SrpClientService {
     return {
       A: SecurityUtils.toBase64(SrpEncoding.toModulusBytes(ctx, A)),
       M1: SecurityUtils.toBase64(SrpEncoding.toHashBytes(ctx, M1)),
-      S: SecurityUtils.toBase64(SrpEncoding.toModulusBytes(ctx, S)),
+      SessionKeyK: sessionKeyK
     };
   }
 
@@ -79,12 +80,10 @@ export class SrpClientService {
    * @param ctx - SRP context.
    * @returns True if the server proof is valid.
    */
-  async verifyServerM2(A_b64: string, M1_b64: string, S_b64: string, serverM2_b64: string, ctx: SrpContext): Promise<boolean> {
+  async verifyServerM2(A_b64: string, M1_b64: string, sessionKeyK: Uint8Array, serverM2_b64: string, ctx: SrpContext): Promise<boolean> {
     const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(A_b64));
     const M1 = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(M1_b64));
-    const S = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(S_b64));
 
-    const sessionKeyK = await SrpEncoding.computeSessionKey(ctx, S);
     const computedM2 = await SrpEncoding.computeM2(ctx, A, M1, sessionKeyK);
     const computedM2Bytes = SrpEncoding.toHashBytes(ctx, computedM2);
     const serverM2Bytes = SecurityUtils.fromBase64(serverM2_b64);
