@@ -90,8 +90,7 @@ export class KeyDerivationService {
 
     const normalizedLogin = identity.trim().toLowerCase();
     const combinedPassword = `${normalizedLogin}:${password}`;
-
-    const safeSalt = new Uint8Array(salt);
+    
     const passwordBytes = new TextEncoder().encode(combinedPassword);
 
     const baseKey = await crypto.subtle.importKey(
@@ -122,7 +121,7 @@ export class KeyDerivationService {
       { 
         name: 'HKDF', 
         hash: srpHashAlgorithm, 
-        salt: safeSalt, 
+        salt: new Uint8Array(0), 
         info: info as BufferSource 
       },
       masterKey,

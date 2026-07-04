@@ -45,13 +45,13 @@ export class SrpEncoding {
   
   /** Computes session key K = H(S). */
   static async computeSessionKey(ctx: SrpContext, S: bigint): Promise<Uint8Array> {
-    const sBytes = this.toModulusBytes(ctx, S);
-    const hashBuffer = await crypto.subtle.digest(
-        ctx.hashAlgorithmName, 
-        sBytes as BufferSource
-    );
-    return new Uint8Array(hashBuffer);
-}
+      let hex = S.toString(16);
+      if (hex.length % 2 !== 0)
+        hex = '0' + hex;
+      const sBytes = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
+      const hashBuffer = await crypto.subtle.digest(ctx.hashAlgorithmName, sBytes);
+      return new Uint8Array(hashBuffer);
+  }
 
 /** Hashes bytes and returns raw Uint8Array (для M1/M2). */
 private static async computeHash(algo: HashAlgorithm, ...buffers: Uint8Array[]): Promise<Uint8Array> {
