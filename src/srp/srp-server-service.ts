@@ -17,6 +17,9 @@ export interface SrpSessionState {
 
   /** Server public ephemeral key B (Base64). */
   publicKeyB: Uint8Array;
+
+  /** User salt s (needed for RFC 5054 M1). */
+  salt: Uint8Array;
 }
 
 /**
@@ -31,7 +34,7 @@ export class SrpServerService {
    * @param ctx - SRP context (hash, N, g, etc.).
    * @returns Session state with private b, verifier, and public B.
    */
-  async getSrpChallenge(login: string, verifierBytes: Uint8Array, ctx: SrpContext): Promise<SrpSessionState> {
+  async getSrpChallenge(login: string, verifierBytes: Uint8Array, salt: Uint8Array, ctx: SrpContext): Promise<SrpSessionState> {
     const v = SecurityUtils.bytesToBigInt(verifierBytes);
 
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
@@ -45,7 +48,8 @@ export class SrpServerService {
       login,
       privateKeyB: bBytes,
       verifier:verifierBytes,
-      publicKeyB: SrpEncoding.toModulusBytes(ctx, B)
+      publicKeyB: SrpEncoding.toModulusBytes(ctx, B),
+      salt
     };
   }
 
@@ -83,7 +87,7 @@ export class SrpServerService {
     const S = SecurityUtils.expMod((A * vU) % ctx.N, b, ctx.N);
 
     const sessionKeyK = await SrpEncoding.computeSessionKey(ctx, S);
-    const M1_server = await SrpEncoding.computeM1(ctx, A, B, sessionKeyK);
+    const M1_server = await SrpEncoding.computeM1(ctx, A, B, sessionKeyK, sessionState.login, sessionState.salt);
 
     if (!SecurityUtils.fixedTimeEquals(M1_server, M1_client))
       throw new Error("Invalid password");
