@@ -32,9 +32,8 @@ export class SrpClientService {
    */
   async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
     const salt = SecurityUtils.fromBase64(saltBase64);
-    const normalizedLogin = login.trim().toLowerCase();
 
-    const authHash = await this.keyDerivation.deriveAuthHashForSrp(normalizedLogin, password, salt, ctx.hashAlgorithmName);
+    const authHash = await this.keyDerivation.deriveAuthHashForSrp(login, password, salt, ctx.hashAlgorithmName);
     const x = SecurityUtils.bytesToBigInt(authHash);
 
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
@@ -63,7 +62,7 @@ export class SrpClientService {
       throw new Error('Critical error: S === 0');
 
     const sessionKeyK = await SrpEncoding.computeSessionKey(ctx, S);
-    const M1 = await SrpEncoding.computeM1(ctx, A, B, sessionKeyK, normalizedLogin, salt);
+    const M1 = await SrpEncoding.computeM1(ctx, A, B, sessionKeyK, login, salt);
 
     return {
       A: SecurityUtils.toBase64(SrpEncoding.toModulusBytes(ctx, A)),

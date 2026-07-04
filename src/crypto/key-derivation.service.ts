@@ -32,8 +32,7 @@ export class KeyDerivationService {
     const safeSalt = new Uint8Array(salt);
     const encoder = new TextEncoder();
 
-    const normalizedLogin = identity.trim().toLowerCase();
-    const combinedPassword = `${normalizedLogin}:${password}`;
+    const combinedPassword = `${identity}:${password}`;
     const passwordBytes = encoder.encode(combinedPassword);
     const baseKey = await crypto.subtle.importKey('raw', passwordBytes, 'PBKDF2', false, ['deriveBits', 'deriveKey']);
 
@@ -87,10 +86,8 @@ export class KeyDerivationService {
     opts.validate();
 
     const srpHashSize = HashSizes[srpHashAlgorithm];;
+    const combinedPassword = `${identity}:${password}`;
 
-    const normalizedLogin = identity.trim().toLowerCase();
-    const combinedPassword = `${normalizedLogin}:${password}`;
-    
     const passwordBytes = new TextEncoder().encode(combinedPassword);
 
     const baseKey = await crypto.subtle.importKey(
