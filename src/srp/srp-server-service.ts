@@ -10,13 +10,13 @@ export interface SrpSessionState {
   login: string;
 
   /** Server private ephemeral key (Base64). */
-  privateKeyB: string;
+  privateKeyB: Uint8Array;
 
   /** Password verifier (Base64). */
-  verifier: string;
+  verifier: Uint8Array;
 
   /** Server public ephemeral key B (Base64). */
-  publicKeyB: string;
+  publicKeyB: Uint8Array;
 }
 
 /**
@@ -43,9 +43,9 @@ export class SrpServerService {
 
     return {
       login,
-      privateKeyB: SecurityUtils.toBase64(bBytes),
-      verifier: SecurityUtils.toBase64(verifierBytes),
-      publicKeyB: SecurityUtils.toBase64(SrpEncoding.toModulusBytes(ctx, B))
+      privateKeyB: bBytes,
+      verifier:verifierBytes,
+      publicKeyB: SrpEncoding.toModulusBytes(ctx, B)
     };
   }
 
@@ -61,9 +61,9 @@ export class SrpServerService {
   async verifySrpProof(sessionState: SrpSessionState, a: string, m1: string, ctx: SrpContext): Promise<string> {
     const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(a));
     const M1_client = SecurityUtils.fromBase64(m1);
-    const b = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(sessionState.privateKeyB));
-    const v = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(sessionState.verifier));
-    const B = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(sessionState.publicKeyB));
+    const b = SecurityUtils.bytesToBigInt(sessionState.privateKeyB);
+    const v = SecurityUtils.bytesToBigInt(sessionState.verifier);
+    const B = SecurityUtils.bytesToBigInt(sessionState.publicKeyB);
 
     if (v <= 0n)
       throw new Error("The verifier is corrupted");
