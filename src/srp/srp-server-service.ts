@@ -60,7 +60,7 @@ export class SrpServerService {
    */
   async verifySrpProof(sessionState: SrpSessionState, a: string, m1: string, ctx: SrpContext): Promise<string> {
     const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(a));
-    const M1_client = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(m1));
+    const M1_client = SecurityUtils.fromBase64(m1);
     const b = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(sessionState.privateKeyB));
     const v = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(sessionState.verifier));
     const B = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(sessionState.publicKeyB));
@@ -85,14 +85,11 @@ export class SrpServerService {
     const sessionKeyK = await SrpEncoding.computeSessionKey(ctx, S);
     const M1_server = await SrpEncoding.computeM1(ctx, A, B, sessionKeyK);
 
-    const m1ServerBytes = SrpEncoding.toHashBytes(ctx, M1_server);
-    const m1ClientBytes = SrpEncoding.toHashBytes(ctx, M1_client);
-
-    if (!SecurityUtils.fixedTimeEquals(m1ServerBytes, m1ClientBytes))
+    if (!SecurityUtils.fixedTimeEquals(M1_server, M1_client))
       throw new Error("Invalid password");
 
     const M2_server = await SrpEncoding.computeM2(ctx, A, M1_client, sessionKeyK);
 
-    return SecurityUtils.toBase64(SrpEncoding.toHashBytes(ctx, M2_server));
+    return SecurityUtils.toBase64(M2_server);
   }
 }

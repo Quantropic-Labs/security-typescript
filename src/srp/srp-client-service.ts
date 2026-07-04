@@ -66,7 +66,7 @@ export class SrpClientService {
 
     return {
       A: SecurityUtils.toBase64(SrpEncoding.toModulusBytes(ctx, A)),
-      M1: SecurityUtils.toBase64(SrpEncoding.toHashBytes(ctx, M1)),
+      M1: SecurityUtils.toBase64(M1),
       SessionKeyK: sessionKeyK
     };
   }
@@ -81,13 +81,10 @@ export class SrpClientService {
    * @returns True if the server proof is valid.
    */
   async verifyServerM2(A_b64: string, M1_b64: string, sessionKeyK: Uint8Array, serverM2_b64: string, ctx: SrpContext): Promise<boolean> {
-    const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(A_b64));
-    const M1 = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(M1_b64));
-
-    const computedM2 = await SrpEncoding.computeM2(ctx, A, M1, sessionKeyK);
-    const computedM2Bytes = SrpEncoding.toHashBytes(ctx, computedM2);
-    const serverM2Bytes = SecurityUtils.fromBase64(serverM2_b64);
-
-    return SecurityUtils.fixedTimeEquals(computedM2Bytes, serverM2Bytes);
+      const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(A_b64));
+      const M1 = SecurityUtils.fromBase64(M1_b64);  // уже Uint8Array
+      const computedM2 = await SrpEncoding.computeM2(ctx, A, M1, sessionKeyK);
+      const serverM2Bytes = SecurityUtils.fromBase64(serverM2_b64);
+      return SecurityUtils.fixedTimeEquals(computedM2, serverM2Bytes);
   }
 }
