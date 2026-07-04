@@ -38,11 +38,16 @@ export class SrpServerService {
     const v = SecurityUtils.bytesToBigInt(verifierBytes);
 
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
-    const bBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
-    const b = SecurityUtils.bytesToBigInt(bBytes);
+    let bBytes: Uint8Array;
+    let B: bigint;
 
-    const gB = SecurityUtils.expMod(ctx.g, b, ctx.N);
-    const B = (ctx.k * v + gB) % ctx.N;
+    do {
+      bBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
+      const b = SecurityUtils.bytesToBigInt(bBytes);
+
+      const gB = SecurityUtils.expMod(ctx.g, b, ctx.N);
+      B = (ctx.k * v + gB) % ctx.N;
+    } while (B === 0n)
 
     return {
       login,
