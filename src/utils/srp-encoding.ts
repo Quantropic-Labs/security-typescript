@@ -22,7 +22,7 @@ export class SrpEncoding {
     const buffers = values.map(v => this.toModulusBytes(ctx, v));
     return this.hash(ctx.hashAlgorithmName, ...buffers);
   }
-  
+
   /**
   * Computes the client proof M1 = H( H(N) ⊕ H(g) | H(I) | s | PAD(A) | PAD(B) | K ).
   * 

@@ -30,6 +30,7 @@ export class SrpClientService {
    * @param ctx - SRP context.
    * @returns Object with A, M1, S as Base64 strings.
    */
+
   async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
     const salt = SecurityUtils.fromBase64(saltBase64);
 
@@ -80,6 +81,7 @@ export class SrpClientService {
    * @param ctx - SRP context.
    * @returns True if the server proof is valid.
    */
+
   async verifyServerM2(A_b64: string, M1_b64: string, sessionKeyK: Uint8Array, serverM2_b64: string, ctx: SrpContext): Promise<boolean> {
       const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(A_b64));
       const M1 = SecurityUtils.fromBase64(M1_b64);  // уже Uint8Array

@@ -87,7 +87,6 @@ export class KeyDerivationService {
 
     const srpHashSize = HashSizes[srpHashAlgorithm];;
     const combinedPassword = `${identity}:${password}`;
-
     const passwordBytes = new TextEncoder().encode(combinedPassword);
 
     const baseKey = await crypto.subtle.importKey(
