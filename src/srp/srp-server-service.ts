@@ -37,6 +37,9 @@ export class SrpServerService {
   async getSrpChallenge(login: string, verifierBytes: Uint8Array, salt: Uint8Array, ctx: SrpContext): Promise<SrpSessionState> {
     const v = SecurityUtils.bytesToBigInt(verifierBytes);
 
+    if (v <= 0n || v >= ctx.N)
+        throw new Error("The verifier is corrupted");
+
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
     let bBytes: Uint8Array;
     let B: bigint;
@@ -74,7 +77,7 @@ export class SrpServerService {
     const v = SecurityUtils.bytesToBigInt(sessionState.verifier);
     const B = SecurityUtils.bytesToBigInt(sessionState.publicKeyB);
 
-    if (v <= 0n)
+    if (v <= 0n || v >= ctx.N)
       throw new Error("The verifier is corrupted");
 
     if (A % ctx.N === 0n)
