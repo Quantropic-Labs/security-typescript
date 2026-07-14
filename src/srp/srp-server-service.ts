@@ -35,38 +35,40 @@ export class SrpServerService {
    * @returns Session state with private b, verifier, and public B.
    */
   async getSrpChallenge(login: string, verifierBytes: Uint8Array, salt: Uint8Array, ctx: SrpContext): Promise<SrpSessionState> {
+    if (!login || login.trim().length === 0)
+      throw new Error('Login cannot be null or empty.');
+    
+    if (!verifierBytes || verifierBytes.length === 0)
+      throw new Error('Verifier cannot be null or empty.');  
+    
     const v = SecurityUtils.bytesToBigInt(verifierBytes);
-
+    
     if (v <= 0n || v >= ctx.N)
-        throw new Error("The verifier is corrupted");
-
+      throw new Error("The verifier is corrupted");
+    
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
-    let bBytes: Uint8Array;
-    let B: bigint;
 
     while (true) {
-        bBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
+        const bBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
         const b = SecurityUtils.bytesToBigInt(bBytes);
 
-        if (b === 0n)
+        if (b === 0n) {
             continue;
+        }
 
         const gB = SecurityUtils.expMod(ctx.g, b, ctx.N);
-        B = (ctx.k * v + gB) % ctx.N;
-        if (B <= 0n || B >= ctx.N)
-            continue; 
-          
-        if (B !== 0n)
-            break;
-    }
+        const B = (ctx.k * v + gB) % ctx.N;
 
-    return {
-      login,
-      privateKeyB: bBytes,
-      verifier:verifierBytes,
-      publicKeyB: SrpEncoding.toModulusBytes(ctx, B),
-      salt
-    };
+        if (B !== 0n) {
+            return {
+                login,
+                privateKeyB: bBytes,
+                verifier: verifierBytes,
+                publicKeyB: SrpEncoding.toModulusBytes(ctx, B),
+                salt
+            };
+        }
+    }
   }
 
   /**
@@ -104,6 +106,9 @@ export class SrpServerService {
 
     const vU = SecurityUtils.expMod(v, u, ctx.N);
     const S = SecurityUtils.expMod((A * vU) % ctx.N, b, ctx.N);
+    
+    if (S === 0n)
+      throw new Error("Critical error: shared secret S is zero (possible malicious A).");
 
     const sessionKeyK = await SrpEncoding.computeSessionKey(ctx, S);
     const M1_server = await SrpEncoding.computeM1(ctx, A, B, sessionKeyK, sessionState.login, sessionState.salt);

@@ -50,7 +50,7 @@ export class SrpClientService {
         throw new Error('Invalid client public key A.');
 
     const B = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(B_base64));
-    if (B % ctx.N === 0n || B >= ctx.N)
+    if (B <= 0n || B >= ctx.N || B % ctx.N === 0n)
       throw new Error('Critical error: B % N === 0');
 
     const u = await SrpEncoding.hashModuli(ctx, A, B);

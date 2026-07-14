@@ -36,7 +36,7 @@ export class SrpEncoding {
   * @param A - Client ephemeral public key.
   * @param B - Server ephemeral public key.
   * @param sessionKeyK - Session key K as raw bytes.
-  * @param identity - User identity (login). Should already be normalized (trimmed / lowercased) by the caller.
+  * @param identity - User identity (login). Must be pre-normalized by the caller.
   * @param salt - User-specific salt bytes.
   * @returns The M1 proof as raw hash bytes.
   */

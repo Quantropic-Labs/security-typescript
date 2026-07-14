@@ -39,22 +39,29 @@ export class SecurityUtils {
     return BigInt('0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
   }
 
-  /** Converts bigint to fixed-length big-endian bytes (pads/truncates). */
+  /** Converts bigint to fixed-length big-endian bytes (pads only; never truncates). */
   static bigIntToFixedBytes(bn: bigint, length: number): Uint8Array {
-      if (length <= 0)
-          throw new Error('Length must be positive.');
-
-      let hex = bn.toString(16);
-
-      if (hex.length % 2 !== 0)
-          hex = '0' + hex;
-
-      if (hex.length > length * 2)
-          throw new Error(`Value byte length (${Math.ceil(hex.length / 2)}) exceeds expected length (${length}). Possible data corruption or context mismatch.`);
-
-      hex = hex.padStart(length * 2, '0');
-
-      return new Uint8Array(hex.match(/.{1,2}/g)?.map(b => parseInt(b, 16)) || []);
+    if (length <= 0) 
+      throw new Error("Length must be positive.");
+    
+    let hex = bn.toString(16);
+    
+    if (hex.length % 2 !== 0)
+      hex = '0' + hex;
+    
+    const byteLength = hex.length / 2;
+    
+    if (byteLength > length)
+        throw new Error(`Value byte length (${byteLength}) exceeds expected length (${length}). Possible data corruption or context mismatch.`);
+      
+    hex = hex.padStart(length * 2, '0');
+    
+    const bytes = new Uint8Array(length);
+    for (let i = 0; i < length; i++) {
+      bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    
+    return bytes;
   }
 
   /** Constant-time comparison of two Uint8Arrays. */
