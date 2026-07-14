@@ -46,7 +46,7 @@ export class SrpClientService {
       throw new Error('Critical error: A % N === 0');
 
     const B = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(B_base64));
-    if (B % ctx.N === 0n)
+    if (B % ctx.N === 0n || B >= ctx.N)
       throw new Error('Critical error: B % N === 0');
 
     const u = await SrpEncoding.hashModuli(ctx, A, B);
