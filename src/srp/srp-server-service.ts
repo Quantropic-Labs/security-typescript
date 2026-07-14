@@ -53,7 +53,9 @@ export class SrpServerService {
 
         const gB = SecurityUtils.expMod(ctx.g, b, ctx.N);
         B = (ctx.k * v + gB) % ctx.N;
-
+        if (B <= 0n || B >= ctx.N)
+            continue; 
+          
         if (B !== 0n)
             break;
     }
@@ -91,6 +93,9 @@ export class SrpServerService {
 
     if (A <= 0n || A >= ctx.N)
       throw new Error("Invalid A (out of range)");
+
+    if (B <= 0n || B >= ctx.N)
+        throw new Error("Invalid server public key B.");
 
     const u = await SrpEncoding.hashModuli(ctx, A, B);
 

@@ -46,8 +46,8 @@ export class SrpClientService {
     } while (a === 0n);
 
     const A = SecurityUtils.expMod(ctx.g, a, ctx.N);
-    if (A % ctx.N === 0n)
-      throw new Error('Critical error: A % N === 0');
+    if (A <= 0n || A >= ctx.N)
+        throw new Error('Invalid client public key A.');
 
     const B = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(B_base64));
     if (B % ctx.N === 0n || B >= ctx.N)
