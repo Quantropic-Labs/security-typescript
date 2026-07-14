@@ -37,8 +37,13 @@ export class SrpClientService {
     const x = SecurityUtils.bytesToBigInt(authHash);
 
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
-    const aBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
-    const a = SecurityUtils.bytesToBigInt(aBytes);
+    let aBytes: Uint8Array;
+    let a: bigint;
+
+    do {
+        aBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
+        a = SecurityUtils.bytesToBigInt(aBytes);
+    } while (a === 0n);
 
     const A = SecurityUtils.expMod(ctx.g, a, ctx.N);
     if (A % ctx.N === 0n)
