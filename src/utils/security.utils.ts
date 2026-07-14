@@ -71,16 +71,18 @@ export class SecurityUtils {
   
    /** Modular exponentiation (base^exp mod mod) using binary exponentiation. */
   static expMod(base: bigint, exp: bigint, mod: bigint): bigint {
-    let res = BigInt(1);
-
+    if (mod === 1n) return 0n;
+    
+    let res = 1n;
     base = base % mod;
-
+    
     while (exp > 0n) {
-      if (exp % 2n === 1n)
+      if ((exp & 1n) === 1n)
         res = (res * base) % mod;
-
-      base = (base * base) % mod;
-      exp = exp / 2n;
+      
+      exp >>= 1n;
+      if (exp > 0n)
+        base = (base * base) % mod;
     }
     
     return res;
