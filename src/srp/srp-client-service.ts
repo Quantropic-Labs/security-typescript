@@ -25,12 +25,11 @@ export class SrpClientService {
    * Generates client proof (A, M1, session key S) from server challenge.
    * @param login - User login.
    * @param password - Plaintext password.
-   * @param saltBase64 - Server salt (URL-safe Base64).
-   * @param B_base64 - Server public ephemeral B (URL-safe Base64).
+   * @param saltBase64 - Server salt (standard Base64).
+   * @param B_base64 - Server public ephemeral B (standard Base64).
    * @param ctx - SRP context.
-   * @returns Object with A, M1, S as Base64 strings.
+   * @returns Object with A and M1 as standard Base64; SessionKeyK as raw bytes.
    */
-
   async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
     const salt = SecurityUtils.fromBase64(saltBase64);
 
