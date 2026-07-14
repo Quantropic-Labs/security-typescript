@@ -88,7 +88,7 @@ export class SrpEncoding {
   
   /** Computes session key K = H(S). */
   static async computeSessionKey(ctx: SrpContext, S: bigint): Promise<Uint8Array> {
-      const sBytes = SecurityUtils.bigIntToFixedBytes(S, ctx.modulusSize);
+      const sBytes = SecurityUtils.bigIntToRawBytes(S);
       const hashBuffer = await crypto.subtle.digest(ctx.hashAlgorithmName, sBytes.buffer as ArrayBuffer);
       return new Uint8Array(hashBuffer);
   }

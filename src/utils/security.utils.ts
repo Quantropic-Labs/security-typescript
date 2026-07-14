@@ -87,4 +87,15 @@ export class SecurityUtils {
     
     return res;
   }
+
+  static bigIntToRawBytes(bn: bigint): Uint8Array {
+    if (bn === 0n) 
+      return new Uint8Array([0]);
+    
+    let hex = bn.toString(16);
+    if (hex.length % 2 !== 0)
+      hex = '0' + hex;
+    
+    return new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
+  }
 }
