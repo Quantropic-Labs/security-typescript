@@ -41,17 +41,20 @@ export class SecurityUtils {
 
   /** Converts bigint to fixed-length big-endian bytes (pads/truncates). */
   static bigIntToFixedBytes(bn: bigint, length: number): Uint8Array {
-    let hex = bn.toString(16);
+      if (length <= 0)
+          throw new Error('Length must be positive.');
 
-    if (hex.length % 2 !== 0)
-       hex = '0' + hex;
+      let hex = bn.toString(16);
 
-    if (hex.length > length * 2) 
-      hex = hex.slice(hex.length - length * 2);
-    else 
+      if (hex.length % 2 !== 0)
+          hex = '0' + hex;
+
+      if (hex.length > length * 2)
+          throw new Error(`Value byte length (${Math.ceil(hex.length / 2)}) exceeds expected length (${length}). Possible data corruption or context mismatch.`);
+
       hex = hex.padStart(length * 2, '0');
 
-    return new Uint8Array(hex.match(/.{1,2}/g)?.map(b => parseInt(b, 16)) || []);
+      return new Uint8Array(hex.match(/.{1,2}/g)?.map(b => parseInt(b, 16)) || []);
   }
 
   /** Constant-time comparison of two Uint8Arrays. */
