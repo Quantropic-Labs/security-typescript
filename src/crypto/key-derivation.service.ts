@@ -9,7 +9,9 @@ import { KdfOptions } from "./kdf-options.js";
 export class KeyDerivationService {
 
    /**
-   * Derives KEK and Base64 AuthHash. Identity is hashed as-is; caller must normalize before calling
+   * Derives KEK and Base64 AuthHash. Identity is hashed as-is — caller must 
+   * normalize (trim, lowercase, etc.) before calling.
+   * @param identity - User identity (pre-normalized by caller).
    * @param identity - User identity (email, username).
    * @param password - User password.
    * @param salt - Random salt.
@@ -36,12 +38,13 @@ export class KeyDerivationService {
     const passwordBytes = encoder.encode(combinedPassword);
     const baseKey = await crypto.subtle.importKey('raw', passwordBytes, 'PBKDF2', false, ['deriveBits', 'deriveKey']);
 
+    const hashSize = HashSizes[opts.hashAlgorithm] ?? 32;
     const masterKeyBits = await crypto.subtle.deriveBits({
       name: 'PBKDF2',
       salt: safeSalt,
       iterations: opts.pbkdf2Iterations,
       hash: opts.hashAlgorithm
-    }, baseKey, SecurityConstants.KeySizeBytes * 8);
+    }, baseKey, hashSize * 8);
 
     const masterKey = await crypto.subtle.importKey('raw', masterKeyBits, 'HKDF', false, ['deriveBits']);
 
@@ -65,6 +68,8 @@ export class KeyDerivationService {
 
    /**
    * Derives an SRP-compatible authentication hash (output size = hash output length).
+   * Identity is hashed as-is — caller must normalize (trim, lowercase, etc.) before calling.
+   * @param identity - User identity (pre-normalized by caller).
    * @param identity - User identity.
    * @param password - User password.
    * @param salt - Random salt.
@@ -102,7 +107,7 @@ export class KeyDerivationService {
       salt: salt as BufferSource,
       iterations: opts.pbkdf2Iterations,
       hash: srpHashAlgorithm
-    }, baseKey, SecurityConstants.KeySizeBytes * 8);
+    }, baseKey, srpHashSize * 8);
 
     const masterKey = await crypto.subtle.importKey(
       'raw', 
