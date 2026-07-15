@@ -25,12 +25,11 @@ export class SrpClientService {
    * Generates client proof (A, M1, session key S) from server challenge.
    * @param login - User login.
    * @param password - Plaintext password.
-   * @param saltBase64 - Server salt (URL-safe Base64).
-   * @param B_base64 - Server public ephemeral B (URL-safe Base64).
+   * @param saltBase64 - Server salt (standard Base64).
+   * @param B_base64 - Server public ephemeral B (standard Base64).
    * @param ctx - SRP context.
-   * @returns Object with A, M1, S as Base64 strings.
+   * @returns Object with A and M1 as standard Base64; SessionKeyK as raw bytes.
    */
-
   async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
     const salt = SecurityUtils.fromBase64(saltBase64);
 
@@ -38,15 +37,20 @@ export class SrpClientService {
     const x = SecurityUtils.bytesToBigInt(authHash);
 
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
-    const aBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
-    const a = SecurityUtils.bytesToBigInt(aBytes);
+    let aBytes: Uint8Array;
+    let a: bigint;
+
+    do {
+        aBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
+        a = SecurityUtils.bytesToBigInt(aBytes);
+    } while (a === 0n);
 
     const A = SecurityUtils.expMod(ctx.g, a, ctx.N);
-    if (A % ctx.N === 0n)
-      throw new Error('Critical error: A % N === 0');
+    if (A <= 0n || A >= ctx.N)
+        throw new Error('Invalid client public key A.');
 
     const B = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(B_base64));
-    if (B % ctx.N === 0n)
+    if (B <= 0n || B >= ctx.N || B % ctx.N === 0n)
       throw new Error('Critical error: B % N === 0');
 
     const u = await SrpEncoding.hashModuli(ctx, A, B);

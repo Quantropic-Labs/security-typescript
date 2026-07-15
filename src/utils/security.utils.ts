@@ -39,19 +39,29 @@ export class SecurityUtils {
     return BigInt('0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
   }
 
-  /** Converts bigint to fixed-length big-endian bytes (pads/truncates). */
+  /** Converts bigint to fixed-length big-endian bytes (pads only; never truncates). */
   static bigIntToFixedBytes(bn: bigint, length: number): Uint8Array {
+    if (length <= 0) 
+      throw new Error("Length must be positive.");
+    
     let hex = bn.toString(16);
-
+    
     if (hex.length % 2 !== 0)
-       hex = '0' + hex;
-
-    if (hex.length > length * 2) 
-      hex = hex.slice(hex.length - length * 2);
-    else 
-      hex = hex.padStart(length * 2, '0');
-
-    return new Uint8Array(hex.match(/.{1,2}/g)?.map(b => parseInt(b, 16)) || []);
+      hex = '0' + hex;
+    
+    const byteLength = hex.length / 2;
+    
+    if (byteLength > length)
+        throw new Error(`Value byte length (${byteLength}) exceeds expected length (${length}). Possible data corruption or context mismatch.`);
+      
+    hex = hex.padStart(length * 2, '0');
+    
+    const bytes = new Uint8Array(length);
+    for (let i = 0; i < length; i++) {
+      bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    
+    return bytes;
   }
 
   /** Constant-time comparison of two Uint8Arrays. */
@@ -68,18 +78,31 @@ export class SecurityUtils {
   
    /** Modular exponentiation (base^exp mod mod) using binary exponentiation. */
   static expMod(base: bigint, exp: bigint, mod: bigint): bigint {
-    let res = BigInt(1);
-
+    if (mod === 1n) return 0n;
+    
+    let res = 1n;
     base = base % mod;
-
+    
     while (exp > 0n) {
-      if (exp % 2n === 1n)
+      if ((exp & 1n) === 1n)
         res = (res * base) % mod;
-
-      base = (base * base) % mod;
-      exp = exp / 2n;
+      
+      exp >>= 1n;
+      if (exp > 0n)
+        base = (base * base) % mod;
     }
     
     return res;
+  }
+
+  static bigIntToRawBytes(bn: bigint): Uint8Array {
+    if (bn === 0n) 
+      return new Uint8Array([0]);
+    
+    let hex = bn.toString(16);
+    if (hex.length % 2 !== 0)
+      hex = '0' + hex;
+    
+    return new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
   }
 }

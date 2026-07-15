@@ -20,7 +20,8 @@ export class CryptoService {
 
     const encoder = new TextEncoder();
     let jsonString: string;
-    if (dataModel instanceof Uint8Array) {
+    
+    if (ArrayBuffer.isView(dataModel) && dataModel.constructor === Uint8Array) {
       jsonString = `"${SecurityUtils.toBase64(dataModel)}"`;
     } else {
       jsonString = JSON.stringify(dataModel);
@@ -118,7 +119,7 @@ export class CryptoService {
         return SecurityUtils.fromBase64(parsed) as unknown as T;
       }
 
-      return JSON.parse(jsonString) as T;
+      return parsed as T;
     } catch (e) {
       console.error('Decryption error:', e);
       throw new Error("Decryption failed: authentication tag mismatch or corrupted data.");
