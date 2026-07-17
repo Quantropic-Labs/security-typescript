@@ -1,5 +1,8 @@
 import { SecurityUtils } from '../utils/security.utils.js';
 import { AesGcmOptions } from './aes-gcm-options.js';
+import { CryptoProfileRegistry } from './crypto-profile-registry.js';
+import { CryptoProfile } from './crypto-profile.js';
+import { CryptoVersion } from './crypto-version.js';
 
 /**
  * AES-GCM encryption/decryption service with JSON serialization.
@@ -14,13 +17,15 @@ export class CryptoService {
    * @param options - AES-GCM configuration; uses default if omitted.
    * @returns Base64-encoded ciphertext with prepended nonce.
    */
-  async encryptData<T>(dataModel: T, key: Uint8Array, options?: AesGcmOptions): Promise<string> {
-    const opts = options ?? AesGcmOptions.default;
+  async encryptData<T>(dataModel: T, key: Uint8Array, version: CryptoVersion = CryptoVersion.V1): Promise<string> {
+    const profile: CryptoProfile = CryptoProfileRegistry.getProfile(version);
+    const opts: AesGcmOptions = profile.aesGcmOptions;
     opts.validate();
 
     const encoder = new TextEncoder();
     let jsonString: string;
-    if (dataModel instanceof Uint8Array) {
+    
+    if (ArrayBuffer.isView(dataModel) && dataModel.constructor === Uint8Array) {
       jsonString = `"${SecurityUtils.toBase64(dataModel)}"`;
     } else {
       jsonString = JSON.stringify(dataModel);
@@ -54,9 +59,10 @@ export class CryptoService {
       plainBytes
     );
 
-    const result = new Uint8Array(opts.nonceSize + encryptedContent.byteLength);
-    result.set(nonce, 0);
-    result.set(new Uint8Array(encryptedContent), opts.nonceSize);
+    const result = new Uint8Array(1 + opts.nonceSize + encryptedContent.byteLength);
+    result[0] = version;
+    result.set(nonce, 1);
+    result.set(new Uint8Array(encryptedContent), 1 + opts.nonceSize);
     return SecurityUtils.toBase64(result);
   }
 
@@ -68,20 +74,24 @@ export class CryptoService {
    * @returns Deserialized object, or null if input is empty.
    * @throws If authentication tag mismatch or corrupted data.
    */
-  async decryptData<T>(encryptedBase64: string, key: Uint8Array, options?: AesGcmOptions, isBytes: boolean = false): Promise<T | null> {
+  async decryptData<T>(encryptedBase64: string, key: Uint8Array, isBytes: boolean = false): Promise<T | null> {
     if (!encryptedBase64)
       return null;
 
-    const opts = options ?? AesGcmOptions.default;
+    const encryptedBytes: Uint8Array<ArrayBufferLike> = SecurityUtils.fromBase64(encryptedBase64);
+
+    const version: CryptoVersion = encryptedBytes[0] as CryptoVersion;
+    const payload: Uint8Array<ArrayBuffer> = encryptedBytes.slice(1);
+
+    const profile: CryptoProfile = CryptoProfileRegistry.getProfile(version);
+    const opts: AesGcmOptions = profile.aesGcmOptions;
     opts.validate();
 
-    const encryptedBytes = SecurityUtils.fromBase64(encryptedBase64);
-
-    if (encryptedBytes.length < opts.nonceSize + opts.tagSize)
+    if (payload.length < opts.nonceSize + opts.tagSize)
       throw new Error(`Invalid format: minimum expected ${opts.nonceSize + opts.tagSize} byte.`);
 
-    const nonce = encryptedBytes.slice(0, opts.nonceSize);
-    const ciphertextWithTag = encryptedBytes.slice(opts.nonceSize);
+    const nonce = payload.slice(0, opts.nonceSize);
+    const ciphertextWithTag = payload.slice(opts.nonceSize);
 
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
@@ -95,9 +105,8 @@ export class CryptoService {
 
       let associatedData: BufferSource = new Uint8Array(0);
 
-      if (opts.associatedData != null){
+      if (opts.associatedData != null)
         associatedData = opts.associatedData as BufferSource;
-      }
 
       const decryptedBuffer = await crypto.subtle.decrypt(
         {
@@ -118,7 +127,7 @@ export class CryptoService {
         return SecurityUtils.fromBase64(parsed) as unknown as T;
       }
 
-      return JSON.parse(jsonString) as T;
+      return parsed as T;
     } catch (e) {
       console.error('Decryption error:', e);
       throw new Error("Decryption failed: authentication tag mismatch or corrupted data.");

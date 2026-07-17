@@ -35,27 +35,40 @@ export class SrpServerService {
    * @returns Session state with private b, verifier, and public B.
    */
   async getSrpChallenge(login: string, verifierBytes: Uint8Array, salt: Uint8Array, ctx: SrpContext): Promise<SrpSessionState> {
+    if (!login || login.trim().length === 0)
+      throw new Error('Login cannot be null or empty.');
+    
+    if (!verifierBytes || verifierBytes.length === 0)
+      throw new Error('Verifier cannot be null or empty.');  
+    
     const v = SecurityUtils.bytesToBigInt(verifierBytes);
-
+    
+    if (v <= 0n || v >= ctx.N)
+      throw new Error("The verifier is corrupted");
+    
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
-    let bBytes: Uint8Array;
-    let B: bigint;
 
-    do {
-      bBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
-      const b = SecurityUtils.bytesToBigInt(bBytes);
+    while (true) {
+        const bBytes = crypto.getRandomValues(new Uint8Array(privateKeySize));
+        const b = SecurityUtils.bytesToBigInt(bBytes);
 
-      const gB = SecurityUtils.expMod(ctx.g, b, ctx.N);
-      B = (ctx.k * v + gB) % ctx.N;
-    } while (B === 0n)
+        if (b === 0n) {
+            continue;
+        }
 
-    return {
-      login,
-      privateKeyB: bBytes,
-      verifier:verifierBytes,
-      publicKeyB: SrpEncoding.toModulusBytes(ctx, B),
-      salt
-    };
+        const gB = SecurityUtils.expMod(ctx.g, b, ctx.N);
+        const B = (ctx.k * v + gB) % ctx.N;
+
+        if (B !== 0n) {
+            return {
+                login,
+                privateKeyB: bBytes,
+                verifier: verifierBytes,
+                publicKeyB: SrpEncoding.toModulusBytes(ctx, B),
+                salt
+            };
+        }
+    }
   }
 
   /**
@@ -74,7 +87,7 @@ export class SrpServerService {
     const v = SecurityUtils.bytesToBigInt(sessionState.verifier);
     const B = SecurityUtils.bytesToBigInt(sessionState.publicKeyB);
 
-    if (v <= 0n)
+    if (v <= 0n || v >= ctx.N)
       throw new Error("The verifier is corrupted");
 
     if (A % ctx.N === 0n)
@@ -83,6 +96,9 @@ export class SrpServerService {
     if (A <= 0n || A >= ctx.N)
       throw new Error("Invalid A (out of range)");
 
+    if (B <= 0n || B >= ctx.N)
+        throw new Error("Invalid server public key B.");
+
     const u = await SrpEncoding.hashModuli(ctx, A, B);
 
     if (u === 0n)
@@ -90,6 +106,9 @@ export class SrpServerService {
 
     const vU = SecurityUtils.expMod(v, u, ctx.N);
     const S = SecurityUtils.expMod((A * vU) % ctx.N, b, ctx.N);
+    
+    if (S === 0n)
+      throw new Error("Critical error: shared secret S is zero (possible malicious A).");
 
     const sessionKeyK = await SrpEncoding.computeSessionKey(ctx, S);
     const M1_server = await SrpEncoding.computeM1(ctx, A, B, sessionKeyK, sessionState.login, sessionState.salt);

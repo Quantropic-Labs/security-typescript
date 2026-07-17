@@ -36,7 +36,7 @@ export class SrpEncoding {
   * @param A - Client ephemeral public key.
   * @param B - Server ephemeral public key.
   * @param sessionKeyK - Session key K as raw bytes.
-  * @param identity - User identity (login). Should already be normalized (trimmed / lowercased) by the caller.
+  * @param identity - User identity (login). Must be pre-normalized by the caller.
   * @param salt - User-specific salt bytes.
   * @returns The M1 proof as raw hash bytes.
   */
@@ -88,11 +88,8 @@ export class SrpEncoding {
   
   /** Computes session key K = H(S). */
   static async computeSessionKey(ctx: SrpContext, S: bigint): Promise<Uint8Array> {
-      let hex = S.toString(16);
-      if (hex.length % 2 !== 0)
-        hex = '0' + hex;
-      const sBytes = new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
-      const hashBuffer = await crypto.subtle.digest(ctx.hashAlgorithmName, sBytes);
+      const sBytes = SecurityUtils.bigIntToRawBytes(S);
+      const hashBuffer = await crypto.subtle.digest(ctx.hashAlgorithmName, sBytes.buffer as ArrayBuffer);
       return new Uint8Array(hashBuffer);
   }
 

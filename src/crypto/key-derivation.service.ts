@@ -1,5 +1,8 @@
 import { HashSizes, SecurityConstants } from "../configurations/security-constants.js";
 import { SecurityUtils } from "../utils/security.utils.js";
+import { CryptoProfileRegistry } from "./crypto-profile-registry.js";
+import { CryptoProfile } from "./crypto-profile.js";
+import { CryptoVersion } from "./crypto-version.js";
 import { HashAlgorithm } from "./hash-algorithm.js";
 import { KdfOptions } from "./kdf-options.js";
 
@@ -9,15 +12,17 @@ import { KdfOptions } from "./kdf-options.js";
 export class KeyDerivationService {
 
    /**
-   * Derives KEK and Base64 AuthHash. Identity is normalized (trimmed, lowercase).
+   * Derives KEK and Base64 AuthHash. Identity is hashed as-is — caller must 
+   * normalize (trim, lowercase, etc.) before calling.
+   * @param identity - User identity (pre-normalized by caller).
    * @param identity - User identity (email, username).
    * @param password - User password.
    * @param salt - Random salt.
    * @param options - KDF configuration; uses default if omitted.
    * @returns Object with `kek` (Uint8Array) and `authHash` (Base64 string).
    */
-  async deriveKeysFromPassword(identity: string, password: string, salt: Uint8Array, options?: KdfOptions): Promise<{ kek: Uint8Array; authHash: string }> {
-    if (!identity || identity.trim().length === 0)
+  async deriveKeysFromPassword(identity: string, password: string, salt: Uint8Array, version: CryptoVersion): Promise<{ kek: Uint8Array; authHash: string }> {
+    if (!identity || identity.length === 0)
       throw new Error('Identity cannot be null or empty.');
 
     if (!password || password.trim().length === 0)
@@ -26,7 +31,8 @@ export class KeyDerivationService {
     if (!salt || salt.length < 16)
       throw new Error('Salt must be at least 16 bytes.');
 
-    const opts = options ?? KdfOptions.default;
+    const profile: CryptoProfile = CryptoProfileRegistry.getProfile(version);
+    const opts: KdfOptions = profile.kdfOptions;
     opts.validate();
 
     const safeSalt = new Uint8Array(salt);
@@ -36,12 +42,13 @@ export class KeyDerivationService {
     const passwordBytes = encoder.encode(combinedPassword);
     const baseKey = await crypto.subtle.importKey('raw', passwordBytes, 'PBKDF2', false, ['deriveBits', 'deriveKey']);
 
+    const hashSize = HashSizes[opts.hashAlgorithm] ?? 32;
     const masterKeyBits = await crypto.subtle.deriveBits({
       name: 'PBKDF2',
       salt: safeSalt,
       iterations: opts.pbkdf2Iterations,
       hash: opts.hashAlgorithm
-    }, baseKey, SecurityConstants.KeySizeBytes * 8);
+    }, baseKey, hashSize * 8);
 
     const masterKey = await crypto.subtle.importKey('raw', masterKeyBits, 'HKDF', false, ['deriveBits']);
 
@@ -65,6 +72,8 @@ export class KeyDerivationService {
 
    /**
    * Derives an SRP-compatible authentication hash (output size = hash output length).
+   * Identity is hashed as-is — caller must normalize (trim, lowercase, etc.) before calling.
+   * @param identity - User identity (pre-normalized by caller).
    * @param identity - User identity.
    * @param password - User password.
    * @param salt - Random salt.
@@ -72,7 +81,7 @@ export class KeyDerivationService {
    * @param options - KDF configuration; uses default if omitted.
    * @returns Raw hash bytes for use as SRP verifier input (x).
    */
-  async deriveAuthHashForSrp(identity: string, password: string, salt: Uint8Array, srpHashAlgorithm: HashAlgorithm, options?: KdfOptions): Promise<Uint8Array> {
+  async deriveAuthHashForSrp(identity: string, password: string, salt: Uint8Array, srpHashAlgorithm: HashAlgorithm, version: CryptoVersion): Promise<Uint8Array> {
     if (!identity || identity.trim().length === 0)
       throw new Error('Identity cannot be null or empty.');
     
@@ -82,7 +91,8 @@ export class KeyDerivationService {
     if (!salt || salt.length < 16)
       throw new Error('Salt must be at least 16 bytes.');
 
-    const opts = options ?? KdfOptions.default;
+    const profile: CryptoProfile = CryptoProfileRegistry.getProfile(version);
+    const opts: KdfOptions = profile.kdfOptions;
     opts.validate();
 
     const srpHashSize = HashSizes[srpHashAlgorithm];;
@@ -102,7 +112,7 @@ export class KeyDerivationService {
       salt: salt as BufferSource,
       iterations: opts.pbkdf2Iterations,
       hash: srpHashAlgorithm
-    }, baseKey, SecurityConstants.KeySizeBytes * 8);
+    }, baseKey, srpHashSize * 8);
 
     const masterKey = await crypto.subtle.importKey(
       'raw', 
