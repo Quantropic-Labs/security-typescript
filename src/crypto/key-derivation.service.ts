@@ -1,5 +1,8 @@
 import { HashSizes, SecurityConstants } from "../configurations/security-constants.js";
 import { SecurityUtils } from "../utils/security.utils.js";
+import { CryptoProfileRegistry } from "./crypto-profile-registry.js";
+import { CryptoProfile } from "./crypto-profile.js";
+import { CryptoVersion } from "./crypto-version.js";
 import { HashAlgorithm } from "./hash-algorithm.js";
 import { KdfOptions } from "./kdf-options.js";
 
@@ -18,7 +21,7 @@ export class KeyDerivationService {
    * @param options - KDF configuration; uses default if omitted.
    * @returns Object with `kek` (Uint8Array) and `authHash` (Base64 string).
    */
-  async deriveKeysFromPassword(identity: string, password: string, salt: Uint8Array, options?: KdfOptions): Promise<{ kek: Uint8Array; authHash: string }> {
+  async deriveKeysFromPassword(identity: string, password: string, salt: Uint8Array, version: CryptoVersion): Promise<{ kek: Uint8Array; authHash: string }> {
     if (!identity || identity.length === 0)
       throw new Error('Identity cannot be null or empty.');
 
@@ -28,7 +31,8 @@ export class KeyDerivationService {
     if (!salt || salt.length < 16)
       throw new Error('Salt must be at least 16 bytes.');
 
-    const opts = options ?? KdfOptions.default;
+    const profile: CryptoProfile = CryptoProfileRegistry.getProfile(version);
+    const opts: KdfOptions = profile.kdfOptions;
     opts.validate();
 
     const safeSalt = new Uint8Array(salt);
@@ -77,7 +81,7 @@ export class KeyDerivationService {
    * @param options - KDF configuration; uses default if omitted.
    * @returns Raw hash bytes for use as SRP verifier input (x).
    */
-  async deriveAuthHashForSrp(identity: string, password: string, salt: Uint8Array, srpHashAlgorithm: HashAlgorithm, options?: KdfOptions): Promise<Uint8Array> {
+  async deriveAuthHashForSrp(identity: string, password: string, salt: Uint8Array, srpHashAlgorithm: HashAlgorithm, version: CryptoVersion): Promise<Uint8Array> {
     if (!identity || identity.trim().length === 0)
       throw new Error('Identity cannot be null or empty.');
     
@@ -87,7 +91,8 @@ export class KeyDerivationService {
     if (!salt || salt.length < 16)
       throw new Error('Salt must be at least 16 bytes.');
 
-    const opts = options ?? KdfOptions.default;
+    const profile: CryptoProfile = CryptoProfileRegistry.getProfile(version);
+    const opts: KdfOptions = profile.kdfOptions;
     opts.validate();
 
     const srpHashSize = HashSizes[srpHashAlgorithm];;

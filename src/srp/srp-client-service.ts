@@ -1,3 +1,4 @@
+import { CryptoVersion } from "../crypto/crypto-version.js";
 import { KeyDerivationService } from "../crypto/key-derivation.service.js";
 import { SecurityUtils } from "../utils/security.utils.js";
 import { SrpEncoding } from "../utils/srp-encoding.js";
@@ -30,10 +31,10 @@ export class SrpClientService {
    * @param ctx - SRP context.
    * @returns Object with A and M1 as standard Base64; SessionKeyK as raw bytes.
    */
-  async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
+  async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext, version: CryptoVersion): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
     const salt = SecurityUtils.fromBase64(saltBase64);
 
-    const authHash = await this.keyDerivation.deriveAuthHashForSrp(login, password, salt, ctx.hashAlgorithmName);
+    const authHash = await this.keyDerivation.deriveAuthHashForSrp(login, password, salt, ctx.hashAlgorithmName, version);
     const x = SecurityUtils.bytesToBigInt(authHash);
 
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
