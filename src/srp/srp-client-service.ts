@@ -18,7 +18,7 @@ export class SrpClientService {
    */
   async generateSrpVerifier(authHash: string, ctx: SrpContext): Promise<string> {
     const x = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(authHash));
-    const v = SecurityUtils.expMod(ctx.g, x, ctx.N);
+    const v = await SecurityUtils.expModAsync(ctx.g, x, ctx.N);
     return SecurityUtils.toBase64(SrpEncoding.toModulusBytes(ctx, v));
   }
 
@@ -46,7 +46,7 @@ export class SrpClientService {
         a = SecurityUtils.bytesToBigInt(aBytes);
     } while (a === 0n);
 
-    const A = SecurityUtils.expMod(ctx.g, a, ctx.N);
+    const A = await SecurityUtils.expModAsync(ctx.g, a, ctx.N);
     if (A <= 0n || A >= ctx.N)
         throw new Error('Invalid client public key A.');
 
@@ -58,11 +58,11 @@ export class SrpClientService {
     if (u === 0n)
       throw new Error('Недопустимое значение u');
 
-    const gX = SecurityUtils.expMod(ctx.g, x, ctx.N);
+    const gX = await SecurityUtils.expModAsync(ctx.g, x, ctx.N);
     const term = (ctx.k * gX) % ctx.N;
     const base = (B - term + ctx.N) % ctx.N;
     const exponent = a + (u * x);
-    const S = SecurityUtils.expMod(base, exponent, ctx.N);
+    const S = await SecurityUtils.expModAsync(base, exponent, ctx.N);
 
     if (S === 0n)
       throw new Error('Critical error: S === 0');

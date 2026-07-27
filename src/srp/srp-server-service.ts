@@ -56,7 +56,7 @@ export class SrpServerService {
             continue;
         }
 
-        const gB = SecurityUtils.expMod(ctx.g, b, ctx.N);
+        const gB = await SecurityUtils.expModAsync(ctx.g, b, ctx.N);
         const B = (ctx.k * v + gB) % ctx.N;
 
         if (B !== 0n) {
@@ -104,8 +104,8 @@ export class SrpServerService {
     if (u === 0n)
       throw new Error("Error in calculating the parameter u");
 
-    const vU = SecurityUtils.expMod(v, u, ctx.N);
-    const S = SecurityUtils.expMod((A * vU) % ctx.N, b, ctx.N);
+    const vU = await SecurityUtils.expModAsync(v, u, ctx.N);
+    const S =await SecurityUtils.expModAsync((A * vU) % ctx.N, b, ctx.N);
     
     if (S === 0n)
       throw new Error("Critical error: shared secret S is zero (possible malicious A).");
