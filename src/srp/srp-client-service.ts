@@ -2,7 +2,8 @@ import { CryptoVersion } from "../crypto/crypto-version.js";
 import { KeyDerivationService } from "../crypto/key-derivation.service.js";
 import { SecurityUtils } from "../utils/security.utils.js";
 import { SrpEncoding } from "../utils/srp-encoding.js";
-import { SrpContext } from "./srp-context.js";
+import { SrpContextFactory } from "./srp-context-factory.js";
+import { SrpGroup } from "./srp-group.js";
 
 /**
  * Client-side SRP-6a implementation: proof generation, verifier creation, server M2 verification.
@@ -16,7 +17,8 @@ export class SrpClientService {
    * @param ctx - SRP context (N, g, hash algorithm, etc.).
    * @returns Verifier as Base64 string.
    */
-  async generateSrpVerifier(authHash: string, ctx: SrpContext): Promise<string> {
+  async generateSrpVerifier(authHash: string, group: SrpGroup): Promise<string> {
+    const ctx = await SrpContextFactory.create(group);
     const x = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(authHash));
     const v = await SecurityUtils.expModAsync(ctx.g, x, ctx.N);
     return SecurityUtils.toBase64(SrpEncoding.toModulusBytes(ctx, v));
@@ -31,7 +33,9 @@ export class SrpClientService {
    * @param ctx - SRP context.
    * @returns Object with A and M1 as standard Base64; SessionKeyK as raw bytes.
    */
-  async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext, version: CryptoVersion): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
+  async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, group: SrpGroup, version: CryptoVersion): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
+    const ctx = await SrpContextFactory.create(group);
+    
     const salt = SecurityUtils.fromBase64(saltBase64);
 
     const authHash = await this.keyDerivation.deriveAuthHashForSrp(login, password, salt, ctx.hashAlgorithmName, version);
@@ -86,12 +90,13 @@ export class SrpClientService {
    * @param ctx - SRP context.
    * @returns True if the server proof is valid.
    */
-
-  async verifyServerM2(A_b64: string, M1_b64: string, sessionKeyK: Uint8Array, serverM2_b64: string, ctx: SrpContext): Promise<boolean> {
-      const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(A_b64));
-      const M1 = SecurityUtils.fromBase64(M1_b64);  // уже Uint8Array
-      const computedM2 = await SrpEncoding.computeM2(ctx, A, M1, sessionKeyK);
-      const serverM2Bytes = SecurityUtils.fromBase64(serverM2_b64);
-      return SecurityUtils.fixedTimeEquals(computedM2, serverM2Bytes);
+  async verifyServerM2(A_b64: string, M1_b64: string, sessionKeyK: Uint8Array, serverM2_b64: string, group: SrpGroup): Promise<boolean> {
+    const ctx = await SrpContextFactory.create(group);
+    
+    const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(A_b64));
+    const M1 = SecurityUtils.fromBase64(M1_b64);
+    const computedM2 = await SrpEncoding.computeM2(ctx, A, M1, sessionKeyK);
+    const serverM2Bytes = SecurityUtils.fromBase64(serverM2_b64);
+    return SecurityUtils.fixedTimeEquals(computedM2, serverM2Bytes);
   }
 }

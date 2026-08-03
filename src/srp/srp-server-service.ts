@@ -1,6 +1,7 @@
 import { SecurityUtils } from "../utils/security.utils.js";
 import { SrpEncoding } from "../utils/srp-encoding.js";
-import { SrpContext } from "./srp-context.js";
+import { SrpContextFactory } from "./srp-context-factory.js";
+import { SrpGroup } from "./srp-group.js";
 
 /**
  * Server-side SRP session state containing ephemeral keys and verifier.
@@ -34,13 +35,15 @@ export class SrpServerService {
    * @param ctx - SRP context (hash, N, g, etc.).
    * @returns Session state with private b, verifier, and public B.
    */
-  async getSrpChallenge(login: string, verifierBytes: Uint8Array, salt: Uint8Array, ctx: SrpContext): Promise<SrpSessionState> {
+  async getSrpChallenge(login: string, verifierBytes: Uint8Array, salt: Uint8Array, group: SrpGroup): Promise<SrpSessionState> {
     if (!login || login.trim().length === 0)
       throw new Error('Login cannot be null or empty.');
     
     if (!verifierBytes || verifierBytes.length === 0)
       throw new Error('Verifier cannot be null or empty.');  
     
+    const ctx = await SrpContextFactory.create(group);
+
     const v = SecurityUtils.bytesToBigInt(verifierBytes);
     
     if (v <= 0n || v >= ctx.N)
@@ -80,7 +83,9 @@ export class SrpServerService {
    * @returns Server proof M2 as Base64 string.
    * @throws If verification fails or input is invalid.
    */
-  async verifySrpProof(sessionState: SrpSessionState, a: string, m1: string, ctx: SrpContext): Promise<string> {
+  async verifySrpProof(sessionState: SrpSessionState, a: string, m1: string, group: SrpGroup): Promise<string> {
+    const ctx = await SrpContextFactory.create(group);
+    
     const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(a));
     const M1_client = SecurityUtils.fromBase64(m1);
     const b = SecurityUtils.bytesToBigInt(sessionState.privateKeyB);
