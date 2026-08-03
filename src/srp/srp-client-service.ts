@@ -1,5 +1,3 @@
-import { CryptoVersion } from "../crypto/crypto-version.js";
-import { KeyDerivationService } from "../crypto/key-derivation.service.js";
 import { SecurityUtils } from "../utils/security.utils.js";
 import { SrpEncoding } from "../utils/srp-encoding.js";
 import { SrpContextFactory } from "./srp-context-factory.js";
@@ -9,8 +7,6 @@ import { SrpGroup } from "./srp-group.js";
  * Client-side SRP-6a implementation: proof generation, verifier creation, server M2 verification.
  */
 export class SrpClientService {
-  private readonly keyDerivation = new KeyDerivationService();
-
    /**
    * Computes SRP verifier v = g^x mod N from the authentication hash.
    * @param authHash - Auth hash (Base64).
@@ -27,19 +23,18 @@ export class SrpClientService {
   /**
    * Generates client proof (A, M1, session key S) from server challenge.
    * @param login - User login.
-   * @param password - Plaintext password.
+   * @param authHashBytes - Plaintext password.
    * @param saltBase64 - Server salt (standard Base64).
    * @param B_base64 - Server public ephemeral B (standard Base64).
    * @param ctx - SRP context.
    * @returns Object with A and M1 as standard Base64; SessionKeyK as raw bytes.
    */
-  async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, group: SrpGroup, version: CryptoVersion): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
+  async generateSrpProof(login: string, authHashBytes: Uint8Array<ArrayBufferLike>, saltBase64: string, B_base64: string, group: SrpGroup): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
     const ctx = await SrpContextFactory.create(group);
     
     const salt = SecurityUtils.fromBase64(saltBase64);
 
-    const authHash = await this.keyDerivation.deriveAuthHashForSrp(login, password, salt, ctx.hashAlgorithmName, version);
-    const x = SecurityUtils.bytesToBigInt(authHash);
+    const x = SecurityUtils.bytesToBigInt(authHashBytes);
 
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
     let aBytes: Uint8Array;
