@@ -14,7 +14,6 @@ export class CryptoService {
    * Encrypts a serializable object to a Base64 string.
    * @param dataModel - Object or Uint8Array to encrypt.
    * @param key - AES-256 key (32 bytes).
-   * @param options - AES-GCM configuration; uses default if omitted.
    * @returns Base64-encoded ciphertext with prepended nonce.
    */
   async encryptData<T>(dataModel: T, key: Uint8Array, version: CryptoVersion = CryptoVersion.V1): Promise<string> {
@@ -70,7 +69,6 @@ export class CryptoService {
    * Decrypts a Base64-encoded ciphertext back to the original object.
    * @param encryptedBase64 - The encrypted data.
    * @param key - AES-256 key (32 bytes).
-   * @param options - AES-GCM configuration; uses default if omitted.
    * @returns Deserialized object, or null if input is empty.
    * @throws If authentication tag mismatch or corrupted data.
    */

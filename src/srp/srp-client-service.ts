@@ -1,41 +1,41 @@
-import { CryptoVersion } from "../crypto/crypto-version.js";
-import { KeyDerivationService } from "../crypto/key-derivation.service.js";
 import { SecurityUtils } from "../utils/security.utils.js";
 import { SrpEncoding } from "../utils/srp-encoding.js";
-import { SrpContext } from "./srp-context.js";
+import { SrpContextFactory } from "./srp-context-factory.js";
+import { SrpGroup } from "./srp-group.js";
 
 /**
  * Client-side SRP-6a implementation: proof generation, verifier creation, server M2 verification.
  */
 export class SrpClientService {
-  private readonly keyDerivation = new KeyDerivationService();
 
    /**
    * Computes SRP verifier v = g^x mod N from the authentication hash.
    * @param authHash - Auth hash (Base64).
-   * @param ctx - SRP context (N, g, hash algorithm, etc.).
+   * @param group - SRP group (determines modulus N, generator g, hash).
    * @returns Verifier as Base64 string.
    */
-  async generateSrpVerifier(authHash: string, ctx: SrpContext): Promise<string> {
+  async generateSrpVerifier(authHash: string, group: SrpGroup): Promise<string> {
+    const ctx = await SrpContextFactory.create(group);
     const x = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(authHash));
-    const v = SecurityUtils.expMod(ctx.g, x, ctx.N);
+    const v = await SecurityUtils.expModAsync(ctx.g, x, ctx.N);
     return SecurityUtils.toBase64(SrpEncoding.toModulusBytes(ctx, v));
   }
 
   /**
    * Generates client proof (A, M1, session key S) from server challenge.
    * @param login - User login.
-   * @param password - Plaintext password.
+   * @param authHashBytes - SRP private exponent x as raw bytes (derived from auth hash).
    * @param saltBase64 - Server salt (standard Base64).
    * @param B_base64 - Server public ephemeral B (standard Base64).
-   * @param ctx - SRP context.
+   * @param group - SRP group (determines modulus N, generator g, hash).
    * @returns Object with A and M1 as standard Base64; SessionKeyK as raw bytes.
    */
-  async generateSrpProof(login: string, password: string, saltBase64: string, B_base64: string, ctx: SrpContext, version: CryptoVersion): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
+  async generateSrpProof(login: string, authHashBytes: Uint8Array<ArrayBufferLike>, saltBase64: string, B_base64: string, group: SrpGroup): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
+    const ctx = await SrpContextFactory.create(group);
+    
     const salt = SecurityUtils.fromBase64(saltBase64);
 
-    const authHash = await this.keyDerivation.deriveAuthHashForSrp(login, password, salt, ctx.hashAlgorithmName, version);
-    const x = SecurityUtils.bytesToBigInt(authHash);
+    const x = SecurityUtils.bytesToBigInt(authHashBytes);
 
     const privateKeySize = Math.max(32, Math.floor(ctx.modulusSize / 2));
     let aBytes: Uint8Array;
@@ -46,7 +46,7 @@ export class SrpClientService {
         a = SecurityUtils.bytesToBigInt(aBytes);
     } while (a === 0n);
 
-    const A = SecurityUtils.expMod(ctx.g, a, ctx.N);
+    const A = await SecurityUtils.expModAsync(ctx.g, a, ctx.N);
     if (A <= 0n || A >= ctx.N)
         throw new Error('Invalid client public key A.');
 
@@ -58,11 +58,11 @@ export class SrpClientService {
     if (u === 0n)
       throw new Error('Недопустимое значение u');
 
-    const gX = SecurityUtils.expMod(ctx.g, x, ctx.N);
+    const gX = await SecurityUtils.expModAsync(ctx.g, x, ctx.N);
     const term = (ctx.k * gX) % ctx.N;
     const base = (B - term + ctx.N) % ctx.N;
     const exponent = a + (u * x);
-    const S = SecurityUtils.expMod(base, exponent, ctx.N);
+    const S = await SecurityUtils.expModAsync(base, exponent, ctx.N);
 
     if (S === 0n)
       throw new Error('Critical error: S === 0');
@@ -81,17 +81,18 @@ export class SrpClientService {
    * Validates the server proof M2 to authenticate the server.
    * @param A_b64 - Client public A (Base64).
    * @param M1_b64 - Client proof M1 (Base64).
-   * @param S_b64 - Session key S (Base64).
+   * @param sessionKeyK - Session key K as raw bytes.
    * @param serverM2_b64 - Server proof M2 (Base64).
-   * @param ctx - SRP context.
+   * @param group - SRP group (determines modulus N, generator g, hash).
    * @returns True if the server proof is valid.
    */
-
-  async verifyServerM2(A_b64: string, M1_b64: string, sessionKeyK: Uint8Array, serverM2_b64: string, ctx: SrpContext): Promise<boolean> {
-      const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(A_b64));
-      const M1 = SecurityUtils.fromBase64(M1_b64);  // уже Uint8Array
-      const computedM2 = await SrpEncoding.computeM2(ctx, A, M1, sessionKeyK);
-      const serverM2Bytes = SecurityUtils.fromBase64(serverM2_b64);
-      return SecurityUtils.fixedTimeEquals(computedM2, serverM2Bytes);
+  async verifyServerM2(A_b64: string, M1_b64: string, sessionKeyK: Uint8Array, serverM2_b64: string, group: SrpGroup): Promise<boolean> {
+    const ctx = await SrpContextFactory.create(group);
+    
+    const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(A_b64));
+    const M1 = SecurityUtils.fromBase64(M1_b64);
+    const computedM2 = await SrpEncoding.computeM2(ctx, A, M1, sessionKeyK);
+    const serverM2Bytes = SecurityUtils.fromBase64(serverM2_b64);
+    return SecurityUtils.fixedTimeEquals(computedM2, serverM2Bytes);
   }
 }

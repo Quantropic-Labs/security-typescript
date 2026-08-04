@@ -15,6 +15,7 @@ export { CryptoProfileRegistry } from './crypto/crypto-profile-registry.js'
 // Srp
 export { SrpClientService } from './srp/srp-client-service.js'
 export { SrpServerService, SrpSessionState } from './srp/srp-server-service.js'
+export { SrpKeyDerivationService } from './srp/srp-key-derivation.service.js';
 export { SrpGroup } from './srp/srp-group.js'
 export { SrpOptions } from './srp/srp-options.js'
 export { SrpGroupParams } from './srp/srp-group-params.js'
