@@ -10,14 +10,13 @@ import { KdfOptions } from "./kdf-options.js";
  */
 export class KeyDerivationService {
 
-   /**
-   * Derives KEK and Base64 AuthHash. Identity is hashed as-is — caller must 
-   * normalize (trim, lowercase, etc.) before calling.
-   * @param identity - User identity (pre-normalized by caller).
-   * @param identity - User identity (email, username).
+  /**
+   * Derives KEK and Base64 AuthHash. Identity is used as-is in the 
+   * combined salt string — caller must normalize (trim, lowercase, etc.) before calling.
+   * @param identity - User identity (email, username). Must be pre-normalized by caller.
    * @param password - User password.
-   * @param salt - Random salt.
-   * @param options - KDF configuration; uses default if omitted.
+   * @param salt - Random salt (minimum 16 bytes).
+   * @param version - Crypto version for profile selection.
    * @returns Object with `kek` (Uint8Array) and `authHash` (Base64 string).
    */
   async deriveKeysFromPassword(identity: string, password: string, salt: Uint8Array, version: CryptoVersion): Promise<{ kek: Uint8Array; authHash: string }> {

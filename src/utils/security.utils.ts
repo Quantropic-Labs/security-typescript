@@ -78,7 +78,10 @@ export class SecurityUtils {
   
   /**
    * Async modular exponentiation with event-loop yielding.
-   * @param yieldEvery — number of iterations before yielding (default 64).
+   * @param base - The base value.
+   * @param exp - The exponent.
+   * @param mod - The modulus.
+   * @param yieldEvery - Number of iterations before yielding (default 64).
    */
   static async expModAsync(
       base: bigint, 
@@ -105,6 +108,7 @@ export class SecurityUtils {
       return res;
   }
 
+  /** Converts bigint to minimal-length big-endian bytes (no padding). */
   static bigIntToRawBytes(bn: bigint): Uint8Array {
     if (bn === 0n) 
       return new Uint8Array([0]);

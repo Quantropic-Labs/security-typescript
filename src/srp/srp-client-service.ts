@@ -7,10 +7,11 @@ import { SrpGroup } from "./srp-group.js";
  * Client-side SRP-6a implementation: proof generation, verifier creation, server M2 verification.
  */
 export class SrpClientService {
+
    /**
    * Computes SRP verifier v = g^x mod N from the authentication hash.
    * @param authHash - Auth hash (Base64).
-   * @param ctx - SRP context (N, g, hash algorithm, etc.).
+   * @param group - SRP group (determines modulus N, generator g, hash).
    * @returns Verifier as Base64 string.
    */
   async generateSrpVerifier(authHash: string, group: SrpGroup): Promise<string> {
@@ -23,10 +24,10 @@ export class SrpClientService {
   /**
    * Generates client proof (A, M1, session key S) from server challenge.
    * @param login - User login.
-   * @param authHashBytes - Plaintext password.
+   * @param authHashBytes - SRP private exponent x as raw bytes (derived from auth hash).
    * @param saltBase64 - Server salt (standard Base64).
    * @param B_base64 - Server public ephemeral B (standard Base64).
-   * @param ctx - SRP context.
+   * @param group - SRP group (determines modulus N, generator g, hash).
    * @returns Object with A and M1 as standard Base64; SessionKeyK as raw bytes.
    */
   async generateSrpProof(login: string, authHashBytes: Uint8Array<ArrayBufferLike>, saltBase64: string, B_base64: string, group: SrpGroup): Promise<{ A: string; M1: string; SessionKeyK: Uint8Array }> {
@@ -80,9 +81,9 @@ export class SrpClientService {
    * Validates the server proof M2 to authenticate the server.
    * @param A_b64 - Client public A (Base64).
    * @param M1_b64 - Client proof M1 (Base64).
-   * @param S_b64 - Session key S (Base64).
+   * @param sessionKeyK - Session key K as raw bytes.
    * @param serverM2_b64 - Server proof M2 (Base64).
-   * @param ctx - SRP context.
+   * @param group - SRP group (determines modulus N, generator g, hash).
    * @returns True if the server proof is valid.
    */
   async verifyServerM2(A_b64: string, M1_b64: string, sessionKeyK: Uint8Array, serverM2_b64: string, group: SrpGroup): Promise<boolean> {

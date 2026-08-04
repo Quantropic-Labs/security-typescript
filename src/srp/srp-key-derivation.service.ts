@@ -7,19 +7,19 @@ import { SrpContextFactory } from "../srp/srp-context-factory.js";
 import { SrpGroup } from "../srp/srp-group.js";
 
 /**
- * Two-stage key derivation: PBKDF2 (master key) → HKDF (sub-keys).
+ * Service for deriving SRP authentication hashes via PBKDF2 → HKDF.
  */
 export class SrpKeyDerivationService {
 
-   /**
+  /**
    * Derives an SRP-compatible authentication hash (output size = hash output length).
-   * Identity is hashed as-is — caller must normalize (trim, lowercase, etc.) before calling.
-   * @param identity - User identity (pre-normalized by caller).
-   * @param identity - User identity.
+   * Identity is used as-is in the combined string — caller must normalize 
+   * (trim, lowercase, etc.) before calling.
+   * @param identity - User identity (email, username). Must be pre-normalized by caller.
    * @param password - User password.
-   * @param salt - Random salt.
-   * @param srpHashAlgorithm - SRP hash algorithm (SHA-256/384/512).
-   * @param options - KDF configuration; uses default if omitted.
+   * @param salt - Random salt (minimum 16 bytes).
+   * @param srpGroup - SRP group (determines hash algorithm and modulus).
+   * @param version - Crypto version for KDF profile selection.
    * @returns Raw hash bytes for use as SRP verifier input (x).
    */
   async deriveAuthHashForSrp(identity: string, password: string, salt: Uint8Array, srpGroup: SrpGroup, version: CryptoVersion): Promise<Uint8Array> {
@@ -38,7 +38,7 @@ export class SrpKeyDerivationService {
 
     const ctx = await SrpContextFactory.create(srpGroup);
     const srpHashAlgorithm = ctx.hashAlgorithmName;
-    const srpHashSize = HashSizes[srpHashAlgorithm];;
+    const srpHashSize = HashSizes[srpHashAlgorithm];
     const combinedPassword = `${identity}:${password}`;
     const passwordBytes = new TextEncoder().encode(combinedPassword);
 

@@ -29,7 +29,7 @@ export class SrpEncoding {
   * Follows RFC 5054 / SRP-6a:
   * - H(N) and H(g) are hashed as modulus-sized values.
   * - Identity (I) is hashed as raw UTF-8 bytes.
-  * - A and B are padded to the modulus size before hashing.
+  * - A and B are zero-padded to the modulus size before hashing.
   * - K is the session key (H(S) without padding).
   * 
   * @param ctx - SRP context containing N, g, hash algorithm, and modulus size.
@@ -76,7 +76,10 @@ export class SrpEncoding {
     );
   }
   
-  /** Computes M2 = H(A || M1 || sessionKeyK). */
+   /** 
+   * Computes M2 = H( PAD(A) || M1 || sessionKeyK ).
+   * A is zero-padded to the modulus size before hashing.
+   */
   static async computeM2(ctx: SrpContext, A: bigint, m1Bytes: Uint8Array, sessionKeyK: Uint8Array): Promise<Uint8Array> {
       return this.computeHash(
           ctx.hashAlgorithmName,
@@ -99,7 +102,7 @@ export class SrpEncoding {
       return new Uint8Array(hashBuffer);
   }
 
-/** Hashes bytes and returns raw Uint8Array (для M1/M2). */
+/** Hashes concatenated byte arrays and returns raw Uint8Array. */
 private static async computeHash(algo: HashAlgorithm, ...buffers: Uint8Array[]): Promise<Uint8Array> {
     const totalLen = buffers.reduce((sum, b) => sum + b.length, 0);
     const combined = new Uint8Array(totalLen);
