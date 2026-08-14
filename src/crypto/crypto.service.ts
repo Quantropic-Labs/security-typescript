@@ -14,7 +14,6 @@ export class CryptoService {
    * Encrypts a serializable object to a Base64 string.
    * @param dataModel - Object or Uint8Array to encrypt.
    * @param key - AES-256 key (32 bytes).
-   * @param options - AES-GCM configuration; uses default if omitted.
    * @returns Base64-encoded ciphertext with prepended nonce.
    */
   async encryptData<T>(dataModel: T, key: Uint8Array, version: CryptoVersion = CryptoVersion.V1): Promise<string> {
@@ -42,18 +41,11 @@ export class CryptoService {
       ['encrypt']
     );
 
-    let associatedData: BufferSource = new Uint8Array(0);
-
-    if (opts.associatedData != null){
-      associatedData = opts.associatedData as BufferSource;
-    }
-
     const encryptedContent = await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
         iv: nonce,
         tagLength: opts.tagSize * 8,
-        additionalData: associatedData
       },
       cryptoKey,
       plainBytes
@@ -70,7 +62,6 @@ export class CryptoService {
    * Decrypts a Base64-encoded ciphertext back to the original object.
    * @param encryptedBase64 - The encrypted data.
    * @param key - AES-256 key (32 bytes).
-   * @param options - AES-GCM configuration; uses default if omitted.
    * @returns Deserialized object, or null if input is empty.
    * @throws If authentication tag mismatch or corrupted data.
    */
@@ -103,17 +94,11 @@ export class CryptoService {
 
     try {
 
-      let associatedData: BufferSource = new Uint8Array(0);
-
-      if (opts.associatedData != null)
-        associatedData = opts.associatedData as BufferSource;
-
       const decryptedBuffer = await crypto.subtle.decrypt(
         {
           name: 'AES-GCM',
           iv: nonce,
           tagLength: opts.tagSize * 8,
-          additionalData: associatedData
         },
         cryptoKey,
         ciphertextWithTag

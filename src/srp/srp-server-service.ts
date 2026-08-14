@@ -1,6 +1,7 @@
 import { SecurityUtils } from "../utils/security.utils.js";
 import { SrpEncoding } from "../utils/srp-encoding.js";
-import { SrpContext } from "./srp-context.js";
+import { SrpContextFactory } from "./srp-context-factory.js";
+import { SrpGroup } from "./srp-group.js";
 
 /**
  * Server-side SRP session state containing ephemeral keys and verifier.
@@ -9,16 +10,16 @@ export interface SrpSessionState {
   /** User login identifier. */
   login: string;
 
-  /** Server private ephemeral key (Base64). */
+  /** Server private ephemeral key (raw bytes). */
   privateKeyB: Uint8Array;
 
-  /** Password verifier (Base64). */
+  /** Password verifier v (raw bytes). */
   verifier: Uint8Array;
 
-  /** Server public ephemeral key B (Base64). */
+  /** Server public ephemeral key B (raw bytes). */
   publicKeyB: Uint8Array;
 
-  /** User salt s (needed for RFC 5054 M1). */
+  /** User salt s (raw bytes). */
   salt: Uint8Array;
 }
 
@@ -31,16 +32,19 @@ export class SrpServerService {
    * Generates server challenge B and session state from verifier.
    * @param login - User login.
    * @param verifierBytes - Stored verifier v as byte array.
-   * @param ctx - SRP context (hash, N, g, etc.).
-   * @returns Session state with private b, verifier, and public B.
+   * @param salt - User salt (raw bytes).
+   * @param group - SRP group (determines modulus N, generator g, hash).
+   * @returns Session state with private b, verifier, public B, and salt.
    */
-  async getSrpChallenge(login: string, verifierBytes: Uint8Array, salt: Uint8Array, ctx: SrpContext): Promise<SrpSessionState> {
+  async getSrpChallenge(login: string, verifierBytes: Uint8Array, salt: Uint8Array, group: SrpGroup): Promise<SrpSessionState> {
     if (!login || login.trim().length === 0)
       throw new Error('Login cannot be null or empty.');
     
     if (!verifierBytes || verifierBytes.length === 0)
       throw new Error('Verifier cannot be null or empty.');  
     
+    const ctx = await SrpContextFactory.create(group);
+
     const v = SecurityUtils.bytesToBigInt(verifierBytes);
     
     if (v <= 0n || v >= ctx.N)
@@ -56,7 +60,7 @@ export class SrpServerService {
             continue;
         }
 
-        const gB = SecurityUtils.expMod(ctx.g, b, ctx.N);
+        const gB = await SecurityUtils.expModAsync(ctx.g, b, ctx.N);
         const B = (ctx.k * v + gB) % ctx.N;
 
         if (B !== 0n) {
@@ -76,11 +80,13 @@ export class SrpServerService {
    * @param sessionState - Server session state.
    * @param a - Client public A (Base64).
    * @param m1 - Client proof M1 (Base64).
-   * @param ctx - SRP context.
+   * @param group - SRP group (determines modulus N, generator g, hash).
    * @returns Server proof M2 as Base64 string.
    * @throws If verification fails or input is invalid.
    */
-  async verifySrpProof(sessionState: SrpSessionState, a: string, m1: string, ctx: SrpContext): Promise<string> {
+  async verifySrpProof(sessionState: SrpSessionState, a: string, m1: string, group: SrpGroup): Promise<string> {
+    const ctx = await SrpContextFactory.create(group);
+    
     const A = SecurityUtils.bytesToBigInt(SecurityUtils.fromBase64(a));
     const M1_client = SecurityUtils.fromBase64(m1);
     const b = SecurityUtils.bytesToBigInt(sessionState.privateKeyB);
@@ -104,8 +110,8 @@ export class SrpServerService {
     if (u === 0n)
       throw new Error("Error in calculating the parameter u");
 
-    const vU = SecurityUtils.expMod(v, u, ctx.N);
-    const S = SecurityUtils.expMod((A * vU) % ctx.N, b, ctx.N);
+    const vU = await SecurityUtils.expModAsync(v, u, ctx.N);
+    const S =await SecurityUtils.expModAsync((A * vU) % ctx.N, b, ctx.N);
     
     if (S === 0n)
       throw new Error("Critical error: shared secret S is zero (possible malicious A).");

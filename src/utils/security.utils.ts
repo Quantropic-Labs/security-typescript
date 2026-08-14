@@ -76,25 +76,39 @@ export class SecurityUtils {
     return diff === 0;
   }
   
-   /** Modular exponentiation (base^exp mod mod) using binary exponentiation. */
-  static expMod(base: bigint, exp: bigint, mod: bigint): bigint {
-    if (mod === 1n) return 0n;
-    
-    let res = 1n;
-    base = base % mod;
-    
-    while (exp > 0n) {
-      if ((exp & 1n) === 1n)
-        res = (res * base) % mod;
-      
-      exp >>= 1n;
-      if (exp > 0n)
-        base = (base * base) % mod;
-    }
-    
-    return res;
+  /**
+   * Async modular exponentiation with event-loop yielding.
+   * @param base - The base value.
+   * @param exp - The exponent.
+   * @param mod - The modulus.
+   * @param yieldEvery - Number of iterations before yielding (default 64).
+   */
+  static async expModAsync(
+      base: bigint, 
+      exp: bigint, 
+      mod: bigint, 
+      yieldEvery: number = 64
+  ): Promise<bigint> {
+      if (mod === 1n) return 0n;
+      let res = 1n;
+      base = base % mod;
+      let i = 0;
+
+      while (exp > 0n) {
+          if ((exp & 1n) === 1n)
+              res = (res * base) % mod;
+          exp >>= 1n;
+          if (exp > 0n)
+              base = (base * base) % mod;
+
+          if (++i % yieldEvery === 0) {
+              await new Promise<void>(resolve => setTimeout(resolve, 0));
+          }
+      }
+      return res;
   }
 
+  /** Converts bigint to minimal-length big-endian bytes (no padding). */
   static bigIntToRawBytes(bn: bigint): Uint8Array {
     if (bn === 0n) 
       return new Uint8Array([0]);
