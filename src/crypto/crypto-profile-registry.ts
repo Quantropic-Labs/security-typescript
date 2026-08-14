@@ -13,8 +13,8 @@ export class CryptoProfileRegistry {
             case CryptoVersion.V1:
                 return new CryptoProfile({
                     version: CryptoVersion.V1,
-                    kdfOptions: KdfOptions.default,
-                    aesGcmOptions: AesGcmOptions.default,
+                    kdfOptions: KdfOptions.V1,
+                    aesGcmOptions: AesGcmOptions.V1,
                 });
             default:
                 throw new Error(`Unsupported crypto version: ${version}`);

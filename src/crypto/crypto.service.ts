@@ -41,18 +41,11 @@ export class CryptoService {
       ['encrypt']
     );
 
-    let associatedData: BufferSource = new Uint8Array(0);
-
-    if (opts.associatedData != null){
-      associatedData = opts.associatedData as BufferSource;
-    }
-
     const encryptedContent = await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
         iv: nonce,
         tagLength: opts.tagSize * 8,
-        additionalData: associatedData
       },
       cryptoKey,
       plainBytes
@@ -101,17 +94,11 @@ export class CryptoService {
 
     try {
 
-      let associatedData: BufferSource = new Uint8Array(0);
-
-      if (opts.associatedData != null)
-        associatedData = opts.associatedData as BufferSource;
-
       const decryptedBuffer = await crypto.subtle.decrypt(
         {
           name: 'AES-GCM',
           iv: nonce,
           tagLength: opts.tagSize * 8,
-          additionalData: associatedData
         },
         cryptoKey,
         ciphertextWithTag

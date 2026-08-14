@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  checks: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Test
+        id: test
+        run: npx vitest run --reporter junit --outputFile test-results.junit.xml
+        continue-on-error: true
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: "**/test-results.junit.xml"
+          fail_on: test failures
+          comment_mode: changes
