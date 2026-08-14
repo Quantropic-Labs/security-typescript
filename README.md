@@ -1,4 +1,4 @@
-# Crossdyne.Security (TypeScript)
+# Crossdyne.Security
 
 > Cross-platform cryptographic library — [.NET](https://github.com/crossdyne/dotnet-security) | [TypeScript](https://github.com/crossdyne/typescript-security)
 >
